@@ -1,4 +1,96 @@
 document.addEventListener('DOMContentLoaded', function() {
+
+    const btnPerorangan = document.getElementById("btnPerorangan");
+    const btnBadanUsaha = document.getElementById("btnBadanUsaha");
+    const formPerorangan = document.getElementById("formPerorangan");
+    const formBadanUsaha = document.getElementById("formBadanUsaha");
+    const inputPerorangan = document.getElementById("namaPerorangan");
+    const namaPemilikContainer = document.getElementById("namaPemilikContainer");
+    const tambahPemilikBtn = document.getElementById("tambahPemilik");
+
+    // Fungsi reset semua tab (hanya sembunyikan)
+    function resetTabs() {
+        btnPerorangan.classList.remove("active");
+        btnBadanUsaha.classList.remove("active");
+        formPerorangan.classList.add("hidden");
+        formBadanUsaha.classList.add("hidden");
+    }
+
+    // Reset form Perorangan
+    function resetFormPerorangan() {
+        formPerorangan.querySelectorAll("input, textarea, select").forEach(el => {
+            if (el.type !== "hidden") el.value = "";
+        });
+        if (inputPerorangan) inputPerorangan.focus();
+    }
+
+    // Reset form Badan Usaha (hanya input nama pemilik)
+    function resetFormBadanUsaha() {
+        // Hapus semua dynamic input
+        namaPemilikContainer.innerHTML = "";
+
+        // Tambah kembali 1 input default
+        const defaultDiv = document.createElement("div");
+        defaultDiv.classList.add("dynamic-input");
+
+        const defaultInput = document.createElement("input");
+        defaultInput.type = "text";
+        defaultInput.name = "namaPemilik[]";
+        defaultInput.placeholder = "Nama Pemilik";
+        defaultInput.classList.add("form-input");
+
+        defaultDiv.appendChild(defaultInput);
+        namaPemilikContainer.appendChild(defaultDiv);
+
+        // Fokus ke input default
+        defaultInput.focus();
+    }
+
+    // ==== Event Tab Perorangan ====
+    btnPerorangan.addEventListener("click", () => {
+        resetTabs();
+        btnPerorangan.classList.add("active");
+        formPerorangan.classList.remove("hidden");
+        resetFormPerorangan();
+    });
+
+    // ==== Event Tab Badan Usaha ====
+    btnBadanUsaha.addEventListener("click", () => {
+        resetTabs();
+        btnBadanUsaha.classList.add("active");
+        formBadanUsaha.classList.remove("hidden");
+        resetFormBadanUsaha();
+    });
+
+    // ==== Event Tambah Nama Pemilik ====
+    tambahPemilikBtn.addEventListener("click", () => {
+        const newInputDiv = document.createElement("div");
+        newInputDiv.classList.add("dynamic-input");
+
+        const newInput = document.createElement("input");
+        newInput.type = "text";
+        newInput.name = "namaPemilik[]";
+        newInput.placeholder = "Nama Pemilik";
+        newInput.classList.add("form-input");
+
+        const hapusBtn = document.createElement("button");
+        hapusBtn.type = "button";
+        hapusBtn.innerHTML = "✕"; // icon silang
+        hapusBtn.classList.add("delete");
+        hapusBtn.addEventListener("click", () => {
+            newInputDiv.remove();
+        });
+
+        newInputDiv.appendChild(newInput);
+        newInputDiv.appendChild(hapusBtn);
+        namaPemilikContainer.appendChild(newInputDiv);
+
+        newInput.focus();
+    });
+
+    // ==== Autofocus awal ====
+    if (inputPerorangan) inputPerorangan.focus();
+
     // --- Elemen DOM ---
     const form = document.getElementById('creditForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -273,64 +365,68 @@ document.addEventListener('DOMContentLoaded', function() {
         resultDiv.style.display = 'none';
     }
 
+    // --- Helper: Ambil nested value berdasarkan path ---
+    function getNestedValue(obj, path) {
+        return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    }
+
     // --- FUNGSI UNTUK MEMBUAT TABEL HASIL ---
     function renderResults(data) {
+        // kalau data array, ambil elemen pertama
+        const obj = Array.isArray(data) ? data[0] : data;
+
         const tableConfigs = [
             {
                 title: 'Profil',
                 fields: {
-                    nama_lengkap: 'Nama Lengkap',
-                    nama_perusahaan: 'Nama Perusahaan',
-                    lama_usaha: 'Lama Usaha (Bulan)'
+                    'user.nama_lengkap': 'Nama Lengkap',
+                    'user.nama_perusahaan': 'Nama Perusahaan',
+                    'user.lama_usaha': 'Lama Usaha (Bulan)'
                 }
             },
             {
                 title: 'Indeks Desa',
                 fields: {
-                    // kode_provinsi: 'Kode Provinsi',
-                    provinsi: 'Provinsi',
-                    // kode_kabupaten: 'Kode Kabupaten',
-                    kabupaten: 'Kabupaten',
-                    // kode_kecamatan: 'Kode Kecamatan',
-                    kecamatan: 'Kecamatan',
-                    // kode_desa: 'Kode Desa',
-                    desa: 'Desa',
-                    nilai_idm: 'Nilai IDM',
-                    status_idm: 'Status IDM',
-                    status_kelayakan_usaha: 'Status Kelayakan Usaha',
-                    lama_usaha_minimum: 'Min. Lama Usaha (Bulan)'
+                    'capacity.provinsi': 'Provinsi',
+                    'capacity.kabupaten': 'Kabupaten',
+                    'capacity.kecamatan': 'Kecamatan',
+                    'capacity.desa': 'Desa',
+                    'capacity.nilai_idm': 'Nilai IDM',
+                    'capacity.status_idm': 'Status IDM',
+                    'capacity.status_kelayakan_usaha': 'Status Kelayakan Usaha',
+                    'capacity.lama_usaha_minimum': 'Min. Lama Usaha (Bulan)'
                 }
             },
             {
                 title: 'Character - Personal',
                 fields: {
-                    pep_status: 'Status PEP',
-                    alasan_pep: 'Alasan PEP',
-                    watchlist_status: 'Status Watchlist',
-                    alasan_watchlist: 'Alasan Watchlist',
-                    pemberitaan_negatif: 'Pemberitaan Negatif',
-                    alasan_pemberitaan_negatif: 'Alasan Pemberitaan Negatif',
-                    ringkasan_berita: 'Summary Sumber Berita',
-                    sumber_berita: 'Sumber Berita',
-                    kesimpulan: 'Kesimpulan',
-                    alasan_kesimpulan: 'Alasan Kesimpulan'
+                    'character_person.pep_status': 'Status PEP',
+                    'character_person.alasan_pep': 'Alasan PEP',
+                    'character_person.watchlist_status': 'Status Watchlist',
+                    'character_person.alasan_watchlist': 'Alasan Watchlist',
+                    'character_person.pemberitaan_negatif': 'Pemberitaan Negatif',
+                    'character_person.alasan_pemberitaan_negatif': 'Alasan Pemberitaan Negatif',
+                    'character_person.ringkasan_berita': 'Summary Sumber Berita',
+                    'character_person.sumber_berita': 'Sumber Berita',
+                    'character_person.kesimpulan': 'Kesimpulan',
+                    'character_person.alasan_kesimpulan': 'Alasan Kesimpulan'
                 }
             },
             {
                 title: 'Character - Business',
                 fields: {
-                    nama_usaha: "Nama usaha",
-                    afiliasi_pep_company: 'Afiliasi PEP',
-                    alasan_afiliasi_company: 'Alasan afiliasi',
-                    keterlibatan_kasus_hukum_company: 'Keterlibatan Kasus Hukum',
-                    alasan_keterlibatan_kasus_hukum_company: 'Alasan keterlibatan',
-                    status_pailit: "Status Pailit",
-                    watchlist_status_company: 'Watchlist Status Company',
-                    alasan_watchlist_company: 'Alasan Watchlist Status Company',
-                    ringkasan_berita_company: 'Kesimpulan berita',
-                    sumber_berita_company: 'Sumber Berita',
-                    kesimpulan_company: 'Kesimpulan',
-                    alasan_kesimpulan_company: 'Alasan Kesimpulan'
+                    'character_company.nama_usaha': 'Nama Usaha',
+                    'character_company.status_pailit': 'Status Pailit',
+                    'character_company.afiliasi_pep': 'Afiliasi PEP',
+                    'character_company.alasan_afiliasi': 'Alasan Afiliasi',
+                    'character_company.keterlibatan_kasus_hukum': 'Keterlibatan Kasus Hukum',
+                    'character_company.alasan_keterlibatan_kasus_hukum': 'Alasan Keterlibatan',
+                    'character_company.watchlist_status': 'Watchlist Status',
+                    'character_company.alasan_watchlist': 'Alasan Watchlist Status',
+                    'character_company.ringkasan_berita': 'Kesimpulan Berita',
+                    'character_company.sumber_berita': 'Sumber Berita',
+                    'character_company.kesimpulan': 'Kesimpulan',
+                    'character_company.alasan_kesimpulan': 'Alasan Kesimpulan'
                 }
             }
         ];
@@ -338,19 +434,23 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
         tableConfigs.forEach(config => {
             html += `<h3>${config.title}</h3>`;
-            // [DIUBAH] Menambahkan class 'result-table' untuk styling margin
             html += '<table class="result-table"><tbody>';
             for (const key in config.fields) {
                 const label = config.fields[key];
-                let value = data[key];
+                let value = getNestedValue(obj, key);
 
                 if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
                     value = '-';
-                }
-                else if (key === 'sumber_berita' && String(value).startsWith('http')) {
-                    value = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`;
-                }
-                else if (key === 'sumber_berita_company' && String(value).startsWith('http')) {
+                } 
+                else if (Array.isArray(value)) {
+                    // khusus array sumber_berita → buat daftar link
+                    value = value.map(v => 
+                        String(v).startsWith('http') 
+                            ? `<a href="${v}" target="_blank" rel="noopener noreferrer">${v}</a>` 
+                            : v
+                    ).join('<br>');
+                } 
+                else if (typeof value === 'string' && value.startsWith('http')) {
                     value = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`;
                 }
 
@@ -362,6 +462,25 @@ document.addEventListener('DOMContentLoaded', function() {
         resultDiv.innerHTML = html;
         resultDiv.style.display = 'block';
     }
+
+    // const btnPerorangan = document.getElementById("btnPerorangan");
+    // const btnBadanUsaha = document.getElementById("btnBadanUsaha");
+    // const formPerorangan = document.getElementById("formPerorangan");
+    // const formBadanUsaha = document.getElementById("formBadanUsaha");
+
+    // btnPerorangan.addEventListener("click", () => {
+    //   btnPerorangan.classList.add("active");
+    //   btnBadanUsaha.classList.remove("active");
+    //   formPerorangan.classList.remove("hidden");
+    //   formBadanUsaha.classList.add("hidden");
+    // });
+
+    // btnBadanUsaha.addEventListener("click", () => {
+    //   btnBadanUsaha.classList.add("active");
+    //   btnPerorangan.classList.remove("active");
+    //   formBadanUsaha.classList.remove("hidden");
+    //   formPerorangan.classList.add("hidden");
+    // });
 
 
     // --- [DIUBAH] FORM SUBMISSION ---
@@ -410,3 +529,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
