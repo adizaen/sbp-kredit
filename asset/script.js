@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Konfigurasi baru untuk setiap tabel yang akan ditampilkan
+        // Konfigurasi tabel (tetap sama)
         const tableConfigs = [{
             title: 'Hasil Screening',
             fields: {
@@ -350,7 +350,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 'quick_decision.berita_negatif': 'Pemberitaan Negatif',
                 'quick_decision.media_sosial': 'Aktivitas Media Sosial',
                 'quick_decision.sentimen': 'Analisis Sentimen',
-                'quick_decision.reputasi': 'Reputasi Digital',
             }
         }, {
             title: 'Analisis Risiko',
@@ -389,45 +388,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 'sentimen_media_sosial': 'Sentimen',
                 'sentimen_detail': 'Detail Sentimen'
             }
-        }, {
-            title: 'Reputasi Digital',
-            fields: {
-                'reputasi_digital': 'Reputasi Digital',
-                'reputasi_detail': 'Detail Reputasi'
-            }
         }];
 
-        let html = ''; // String HTML untuk menampung semua tabel
+        let html = '';
 
-        // Loop melalui setiap konfigurasi tabel
         tableConfigs.forEach(config => {
-            // Cek apakah ada data yang relevan untuk tabel ini sebelum merendernya
             const hasData = Object.keys(config.fields).some(key => {
                 const value = getNestedValue(obj, key);
                 return value !== null && value !== undefined && value !== '';
             });
 
-            // Hanya render tabel jika memiliki data
             if (hasData) {
                 html += `<h3>${config.title}</h3>`;
                 html += '<table class="result-table"><tbody>';
 
-                // Loop melalui setiap field dalam konfigurasi tabel saat ini
                 for (const key in config.fields) {
                     const label = config.fields[key];
                     let value = getNestedValue(obj, key);
 
-                    // Logika format nilai (tetap sama)
+                    // --- AWAL PERUBAHAN ---
+                    // Logika format nilai yang sudah diperbaiki
                     if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
                         value = '-';
                     } else if (Array.isArray(value)) {
-                        value = value.map(v =>
-                            String(v).startsWith('http') ?
-                            `<a href="${v}" target="_blank" rel="noopener noreferrer">${v}</a>` : v
-                        ).join('<br>');
+                        // Cek apakah elemen di dalam array adalah objek
+                        if (typeof value[0] === 'object' && value[0] !== null) {
+                            // Jika ya, format sebagai daftar detail
+                            let listHtml = '<ul class="details-list">';
+                            value.forEach(item => {
+                                listHtml += '<li>';
+                                let itemDetails = '';
+                                for (const itemKey in item) {
+                                    // Format setiap key-value dari objek
+                                    itemDetails += `<div><strong>${itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${item[itemKey]}</div>`;
+                                }
+                                listHtml += `${itemDetails}</li>`;
+                            });
+                            listHtml += '</ul>';
+                            value = listHtml;
+                        } else {
+                            // Jika bukan objek (misal array of strings/links), gunakan logika lama
+                            value = value.map(v =>
+                                String(v).startsWith('http') ?
+                                `<a href="${v}" target="_blank" rel="noopener noreferrer">${v}</a>` : v
+                            ).join('<br>');
+                        }
+                    } else if (typeof value === 'object' && value !== null) {
+                        // Menangani jika nilainya adalah satu objek (bukan array)
+                        let objectDetails = '<div class="details-object">';
+                        for (const itemKey in value) {
+                            objectDetails += `<div><strong>${itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value[itemKey]}</div>`;
+                        }
+                        objectDetails += '</div>';
+                        value = objectDetails;
                     } else if (typeof value === 'string' && value.startsWith('http')) {
                         value = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`;
                     }
+                    // --- AKHIR PERUBAHAN ---
 
                     html += `<tr><td>${label}</td><td>${value}</td></tr>`;
                 }
@@ -450,7 +467,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let API_URL = '';
         const params = new URLSearchParams();
-        const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
+        // const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
+        const BASE_API_URL = 'http://localhost:5678/webhook/sbp';
 
         if (btnPerorangan.classList.contains('active')) {
             const namaPeroranganValue = document.getElementById('namaPerorangan').value.trim();

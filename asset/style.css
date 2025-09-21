@@ -252,6 +252,7 @@ select:disabled {
     word-wrap: break-word;
     word-break: break-word;
     max-width: 300px;
+    vertical-align: top; /* Memastikan selaras di atas */
 }
 
 .result td:first-child {
@@ -260,6 +261,22 @@ select:disabled {
     width: 35%;
     background-color: #3a3a3a;
 }
+
+/* === KODE BARU UNTUK STYLING LIST === */
+.result td ul {
+    padding-left: 25px; /* Memberi ruang di kiri untuk bullet point */
+    list-style-position: inside; /* Memastikan bullet point ada di dalam padding */
+}
+
+.result td ul li {
+    margin-bottom: 8px; /* Memberi jarak vertikal antar item */
+}
+
+.result td ul li:last-child {
+    margin-bottom: 0; /* Menghapus margin pada item terakhir agar rapi */
+}
+/* === AKHIR KODE BARU === */
+
 
 .error {
     display: none;
@@ -402,6 +419,9 @@ select:disabled {
 
 /* ===== Responsive adjustments ===== */
 @media (max-width: 1024px) {
+    .container {
+        max-width: 90%;
+    }
     .location-grid {
         grid-template-columns: 1fr 1fr; /* 2 kolom di tablet */
         gap: 12px;
@@ -414,6 +434,9 @@ select:disabled {
 }
 
 @media (max-width: 768px) {
+    .container {
+        max-width: 95%;
+    }
     /* Location grid jadi 1 kolom */
     .location-grid {
         grid-template-columns: 1fr;
@@ -460,6 +483,13 @@ select:disabled {
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        max-width: 100%;
+        border-radius: 16px;
+    }
     /* Semua input dan tombol full width */
     input, select {
         padding: 12px 14px;
@@ -497,4 +527,3 @@ select:disabled {
 input, select, .dynamic-input button, #tambahPemilik {
     transition: all 0.2s ease-in-out;
 }
-
