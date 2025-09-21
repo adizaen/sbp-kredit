@@ -16,7 +16,7 @@ body {
 
 /* ===== Container ===== */
 .container {
-    max-width: 900px;
+    max-width: 75%;
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(20px);
