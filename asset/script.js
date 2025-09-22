@@ -331,6 +331,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return path.split('.').reduce((acc, part) => acc && acc[part], obj);
     }
 
+    /**
+     * Merender data hasil screening ke dalam tabel HTML.
+     * @param {object|object[]} data - Objek tunggal atau array berisi satu objek data hasil.
+     */
     function renderResults(data) {
         const obj = Array.isArray(data) ? data[0] : data;
 
@@ -348,8 +352,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 'quick_decision.pep': 'Status PEP',
                 'quick_decision.watchlist': 'Status Watchlist',
                 'quick_decision.berita_negatif': 'Pemberitaan Negatif',
-                'quick_decision.media_sosial': 'Aktivitas Media Sosial',
-                'quick_decision.sentimen': 'Analisis Sentimen',
+                // 'quick_decision.media_sosial': 'Aktivitas Media Sosial',
+                'quick_decision.sentimen': 'Sentimen Negatif',
             }
         }, {
             title: 'Analisis Risiko',
@@ -383,8 +387,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }, {
             title: 'Analisis Media Sosial',
             fields: {
-                'media_sosial_negatif_status': 'Status Negatif',
-                'media_sosial_negatif_detail': 'Detail Aktivitas',
+                // 'media_sosial_negatif_status': 'Status Negatif',
+                // 'media_sosial_negatif_detail': 'Detail Aktivitas',
                 'sentimen_media_sosial': 'Sentimen',
                 'sentimen_detail': 'Detail Sentimen'
             }
@@ -393,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
 
         tableConfigs.forEach(config => {
+            // Pengecekan apakah ada data untuk ditampilkan di tabel ini
             const hasData = Object.keys(config.fields).some(key => {
                 const value = getNestedValue(obj, key);
                 return value !== null && value !== undefined && value !== '';
@@ -406,8 +411,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     const label = config.fields[key];
                     let value = getNestedValue(obj, key);
 
-                    // --- AWAL PERUBAHAN ---
-                    // Logika format nilai yang sudah diperbaiki
+                    // --- PERUBAHAN DIMULAI ---
+                    // Logika khusus untuk 'watchlist_detail'
+                    // Jika status watchlist adalah 'Tidak Ditemukan', paksa detailnya menjadi '-'
+                    if (key === 'watchlist_detail') {
+                        const watchlistStatus = getNestedValue(obj, 'watchlist_status');
+                        // Anda bisa menyesuaikan string 'Tidak Ditemukan' jika nilainya berbeda
+                        if (watchlistStatus === 'Tidak Ditemukan' || watchlistStatus === 'Not Found') {
+                            value = '-';
+                        }
+                    }
+                    // --- PERUBAHAN SELESAI ---
+
+
+                    // Logika format nilai yang sudah ada (dipertahankan)
                     if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
                         value = '-';
                     } else if (Array.isArray(value)) {
@@ -444,7 +461,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else if (typeof value === 'string' && value.startsWith('http')) {
                         value = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`;
                     }
-                    // --- AKHIR PERUBAHAN ---
 
                     html += `<tr><td>${label}</td><td>${value}</td></tr>`;
                 }
@@ -457,6 +473,22 @@ document.addEventListener('DOMContentLoaded', function() {
         resultDiv.style.display = 'block';
     }
 
+    // Asumsi Anda memiliki fungsi getNestedValue dan showError
+    function getNestedValue(obj, path) {
+        return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    }
+
+    function showError(message) {
+        console.error(message);
+        // Tampilkan pesan error di UI jika perlu
+        const resultDiv = document.getElementById('result'); // Ganti dengan ID elemen Anda
+        if (resultDiv) {
+            resultDiv.innerHTML = `<div class="error-message">${message}</div>`;
+            resultDiv.style.display = 'block';
+        }
+    }
+
+
     async function handleFormSubmit(e) {
         e.preventDefault();
 
@@ -467,8 +499,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let API_URL = '';
         const params = new URLSearchParams();
-        // const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
-        const BASE_API_URL = 'http://localhost:5678/webhook/sbp';
+        const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
+        // const BASE_API_URL = 'http://localhost:5678/webhook/sbp';
 
         if (btnPerorangan.classList.contains('active')) {
             const namaPeroranganValue = document.getElementById('namaPerorangan').value.trim();
