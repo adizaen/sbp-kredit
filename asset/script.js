@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Merender data hasil screening ke dalam tabel HTML.
-     * Kode ini telah diperbarui untuk menangani struktur JSON yang baru dan nested.
+     * JABATAN/POSISI: Diberikan format khusus untuk memisahkan Current & Historical.
      */
     function renderResults(data) {
         const obj = Array.isArray(data) ? data[0] : data;
@@ -338,89 +338,120 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // KONFIGURASI BARU: Sesuaikan path kunci dengan struktur JSON Anda
+        // Fungsi bantuan untuk menormalisasi status (Tidak perlu diubah)
+        function normalizeStatus(status) {
+            if (!status) return "tidak ditemukan";
+            const normalized = status.toString().toLowerCase().trim();
+            return normalized.includes("ditemukan") && !normalized.includes("tidak") ? "ditemukan" : "tidak ditemukan";
+        }
+
+        // Konfigurasi Tabel (Tidak perlu diubah)
         const tableConfigs = [
             {
                 title: 'Ringkasan Hasil Screening',
                 fields: {
-                    // Path menunjuk ke dalam objek 'screening_pep' dan array 'results'
-                    'screening_pep.results.0.name': 'Nama Lengkap',
-                    'screening_pep.timestamp_utc': 'Tanggal Screening',
-                    'screening_pep.pep_status': 'Status PEP',
-                    'pemeriksaan_hukum.keterlibatan_hukum': 'Status Hukum',
-                    'pemberitaan_negatif.pemberitaan_negatif': 'Status Pemberitaan Negatif'
+                    'nama_lengkap': 'Nama Lengkap',
+                    'tanggal_screening': 'Tanggal Screening',
+                    'matriks_keputusan_cepat.pep': 'Status Cepat (PEP)',
+                    'matriks_keputusan_cepat.hukum': 'Status Cepat (Hukum)',
+                    'matriks_keputusan_cepat.berita_negatif': 'Status Cepat (Berita Negatif)'
                 }
             },
             {
                 title: 'Analisis Risiko',
                 fields: {
-                    // Path yang lebih dalam untuk mengakses data risk_assessment
-                    'screening_pep.results.0.risk_assessment.risk_level': 'Tingkat Risiko',
-                    'screening_pep.results.0.risk_assessment.rationale': 'Faktor Risiko',
-                    'screening_pep.results.0.risk_assessment.mitigating_factors': 'Faktor Peringan',
-                    'screening_pep.results.0.risk_assessment.recommended_actions': 'Tindakan yang Direkomendasikan'
+                    'skor_risiko': 'Skor Risiko',
+                    'kelayakan_kredit': 'Level Risiko',
+                    'faktor_risiko': 'Faktor Risiko',
+                    'rekomendasi_kredit': 'Rekomendasi'
                 }
             },
             {
                 title: 'Detail PEP (Politically Exposed Person)',
+                statusPath: 'pep_status',
                 fields: {
-                    'screening_pep.alasan_pep': 'Alasan Status PEP',
-                    'screening_pep.results.0.pep_status': 'Detail Status PEP', // Ini adalah objek
-                    'screening_pep.results.0.positions': 'Jabatan/Posisi', // Ini adalah objek
-                    'screening_pep.results.0.summary': 'Ringkasan Profil',
-                    'screening_pep.notes_limitations': 'Catatan & Keterbatasan'
+                    'pep_status': 'Status PEP',
+                    'pep_detail': 'Ringkasan/Alasan PEP',
+                    'raw_data.screening_pep.results.0.pep_status.category': 'Kategori PEP',
+                    // Path untuk Jabatan/Posisi
+                    'raw_data.screening_pep.results.0.positions': 'Jabatan/Posisi Teridentifikasi',
+                    'raw_data.screening_pep.notes_limitations': 'Catatan & Keterbatasan'
                 }
             },
             {
                 title: 'Detail Keterlibatan Hukum',
+                statusPath: 'keterlibatan_hukum_status',
                 fields: {
-                    'pemeriksaan_hukum.keterlibatan_hukum': 'Status',
-                    'pemeriksaan_hukum.disambiguasi.catatan': 'Catatan Disambiguasi',
-                    'pemeriksaan_hukum.tingkat_keyakinan': 'Tingkat Keyakinan'
+                    'keterlibatan_hukum_status': 'Status Hukum',
+                    'keterlibatan_hukum_detail': 'Ringkasan/Detail Hukum'
                 }
             },
             {
                 title: 'Detail Pemberitaan Negatif',
+                statusPath: 'pemberitaan_negatif_status',
                 fields: {
-                    'pemberitaan_negatif.pemberitaan_negatif': 'Status',
-                    'pemberitaan_negatif.ringkasan_umum': 'Ringkasan Umum'
+                    'pemberitaan_negatif_status': 'Status Pemberitaan Negatif',
+                    'pemberitaan_negatif_detail': 'Ringkasan/Detail Berita'
                 }
             }
         ];
 
         let html = '';
         tableConfigs.forEach(config => {
-            // Cek apakah ada data yang relevan untuk tabel ini sebelum merendernya
-            const hasData = Object.keys(config.fields).some(key => {
-                const value = getNestedValue(obj, key);
-                return value !== null && value !== undefined && value !== '' && (!Array.isArray(value) || value.length > 0);
-            });
+            html += `<h3>${config.title}</h3><table class="result-table"><tbody>`;
+            const sectionStatusValue = config.statusPath ? getNestedValue(obj, config.statusPath) : 'ditemukan';
+            const isSectionFound = normalizeStatus(sectionStatusValue) === 'ditemukan';
 
-            if (hasData) {
-                html += `<h3>${config.title}</h3><table class="result-table"><tbody>`;
-                for (const key in config.fields) {
-                    const label = config.fields[key];
-                    let value = getNestedValue(obj, key);
+            for (const key in config.fields) {
+                const label = config.fields[key];
+                let value = getNestedValue(obj, key);
 
-                    let formattedValue = '';
-                    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
-                        formattedValue = '-';
-                    } else if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
-                        // PENINGKATAN: Logika untuk merender array berisi objek (seperti 'sources')
-                        formattedValue = '<ul class="details-list">';
-                        value.forEach(item => {
-                            formattedValue += '<li>';
-                            for (const itemKey in item) {
-                                formattedValue += `<strong>${itemKey.replace(/_/g, ' ')}:</strong> ${item[itemKey]}<br>`;
-                            }
-                            formattedValue += '</li>';
-                        });
-                        formattedValue += '</ul>';
-                    } else if (Array.isArray(value)) {
-                        // Render array biasa (string atau angka)
+                if (!isSectionFound && key !== config.statusPath) {
+                    value = null;
+                }
+
+                let formattedValue = '';
+                if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+                    formattedValue = '-';
+                } else if (Array.isArray(value)) {
+                    // ... (logika array tidak diubah)
+                    if (key === 'faktor_risiko') {
+                        if (value.length === 1) {
+                            formattedValue = value[0];
+                        } else {
+                            formattedValue = `<ol class="details-list"><li>${value.join('</li><li>')}</li></ol>`;
+                        }
+                    } else {
                         formattedValue = `<ul class="details-list"><li>${value.join('</li><li>')}</li></ul>`;
-                    } else if (typeof value === 'object' && value !== null) {
-                        // Render objek biasa
+                    }
+                } else if (typeof value === 'object' && value !== null) {
+                    // --- PERUBAHAN UTAMA DI SINI ---
+                    // Cek apakah ini adalah objek 'positions'
+                    if (key === 'raw_data.screening_pep.results.0.positions') {
+                        formattedValue = '<div class="positions-detail">';
+                        
+                        // Bagian Current or Recent
+                        const current = value.current_or_recent || [];
+                        formattedValue += '<strong>Current or Recent:</strong>';
+                        if (current.length > 0) {
+                            formattedValue += `<ul class="details-list"><li>${current.join('</li><li>')}</li></ul>`;
+                        } else {
+                            formattedValue += ' -<br>';
+                        }
+
+                        // Bagian Historical
+                        const historical = value.historical || [];
+                        formattedValue += '<strong>Historical:</strong>';
+                        if (historical.length > 0) {
+                            formattedValue += `<ul class="details-list"><li>${historical.join('</li><li>')}</li></ul>`;
+                        } else {
+                            // Jika historical kosong, tampilkan strip
+                            formattedValue += ' -';
+                        }
+
+                        formattedValue += '</div>';
+                    } else {
+                        // Untuk objek lain, gunakan format generik seperti biasa
                         formattedValue = '<div class="details-object">';
                         for (const itemKey in value) {
                             let subValue = value[itemKey];
@@ -430,21 +461,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             formattedValue += `<div><strong>${itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${subValue}</div>`;
                         }
                         formattedValue += '</div>';
-                    } else {
-                        formattedValue = value;
                     }
-                    html += `<tr><td>${label}</td><td>${formattedValue}</td></tr>`;
+                } else {
+                    formattedValue = value;
                 }
-                html += '</tbody></table>';
+                html += `<tr><td>${label}</td><td>${formattedValue}</td></tr>`;
             }
+            html += '</tbody></table>';
         });
+
         resultDiv.innerHTML = html;
         resultDiv.style.display = 'block';
     }
 
     /**
-     * Helper function to get a value from a nested object using a dot-notation string.
-     * Pastikan fungsi ini ada di dalam scope kode Anda.
+     * Helper untuk ambil nested value dengan dot-notation. (Tidak perlu diubah)
      */
     function getNestedValue(obj, path) {
         if (!path) return undefined;
@@ -461,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
 
         const params = new URLSearchParams();
-        const BASE_API_URL = 'http://10.63.144.146:5678/webhook-test/sbp';
+        const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
         let API_URL = '';
 
         if (btnPerorangan.classList.contains('active')) {
