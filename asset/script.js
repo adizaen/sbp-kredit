@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
 
     // =================================================================================
-    // A. KONSOLIDASI SELEKSI ELEMEN DOM
+    // A. DEKLARASI ELEMEN DOM
     // =================================================================================
     const creditForm = document.getElementById('creditForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -23,14 +23,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const kecamatanSelect = document.getElementById('kecamatan');
     const kelurahanSelect = document.getElementById('kelurahan');
 
+
     // =================================================================================
-    // B. MANAJEMEN TAB & FORM DINAMIS
+    // B. FUNGSI UTILITAS & HELPERS
     // =================================================================================
 
     /**
+     * Menampilkan pesan error di UI.
+     */
+    function showError(message) {
+        errorText.textContent = message;
+        errorDiv.style.display = 'block';
+        loadingDiv.style.display = 'none';
+        resultDiv.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+
+    /**
+     * Mengambil nilai dari properti objek yang bersarang (nested).
+     */
+    function getNestedValue(obj, path) {
+        return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    }
+
+    /**
      * Mengaktifkan/menonaktifkan semua input dalam sebuah elemen container.
-     * @param {HTMLElement} container - Elemen pembungkus form (misal: formPerorangan).
-     * @param {boolean} enable - True untuk mengaktifkan, false untuk menonaktifkan.
      */
     function toggleInputs(container, enable) {
         container.querySelectorAll('input, select, textarea, button').forEach(el => {
@@ -38,8 +55,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+
+    // =================================================================================
+    // C. MANAJEMEN TAMPILAN FORM & UI
+    // =================================================================================
+
     /**
-     * Mereset semua tampilan tab ke kondisi awal (tersembunyi dan tidak aktif).
+     * Mereset semua tampilan tab ke kondisi awal.
      */
     function resetTabs() {
         btnPerorangan.classList.remove("active");
@@ -49,45 +71,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Membersihkan area hasil (tabel), loading, dan pesan error.
+     * Membersihkan area hasil, loading, dan pesan error.
      */
     function resetResultDisplay() {
-        if (resultDiv) {
-            resultDiv.innerHTML = ''; // Mengosongkan konten tabel hasil
-            resultDiv.style.display = 'none'; // <-- TAMBAHKAN BARIS INI
-        }
-        if (loadingDiv) loadingDiv.style.display = 'none';
-        if (errorDiv) errorDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+        resultDiv.style.display = 'none';
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
     }
 
     /**
-     * Membersihkan semua nilai input pada form perorangan dan memberi fokus.
+     * Membersihkan semua nilai input pada form perorangan.
      */
     function resetFormPerorangan() {
         formPerorangan.querySelectorAll("input, textarea, select").forEach(el => {
             if (el.type !== "hidden") el.value = "";
         });
-        if (inputPerorangan) inputPerorangan.focus();
+        inputPerorangan.focus();
     }
 
     /**
-     * Membersihkan dan mereset form badan usaha ke kondisi awal.
+     * Membersihkan dan mereset form badan usaha.
      */
     function resetFormBadanUsaha() {
         namaPemilikContainer.innerHTML = "";
         const defaultDiv = document.createElement("div");
-        defaultDiv.classList.add("dynamic-input");
-
+        defaultDiv.className = "dynamic-input";
         const defaultInput = document.createElement("input");
         defaultInput.type = "text";
         defaultInput.name = "namaPemilik[]";
         defaultInput.placeholder = "Nama Pemilik";
-        defaultInput.classList.add("form-input");
+        defaultInput.className = "form-input";
         defaultInput.required = true;
-
         defaultDiv.appendChild(defaultInput);
         namaPemilikContainer.appendChild(defaultDiv);
-
         formBadanUsaha.querySelectorAll("input, textarea, select").forEach(el => {
             if (!el.closest("#namaPemilikContainer") && el.type !== "hidden") {
                 el.value = "";
@@ -101,28 +118,26 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function tambahPemilik() {
         const newInputDiv = document.createElement("div");
-        newInputDiv.classList.add("dynamic-input");
-
+        newInputDiv.className = "dynamic-input";
         const newInput = document.createElement("input");
         newInput.type = "text";
         newInput.name = "namaPemilik[]";
         newInput.placeholder = "Nama Pemilik";
-        newInput.classList.add("form-input");
-
+        newInput.className = "form-input";
         const hapusBtn = document.createElement("button");
         hapusBtn.type = "button";
         hapusBtn.innerHTML = "✕";
-        hapusBtn.classList.add("delete");
+        hapusBtn.className = "delete";
         hapusBtn.addEventListener("click", () => newInputDiv.remove());
-
         newInputDiv.appendChild(newInput);
         newInputDiv.appendChild(hapusBtn);
         namaPemilikContainer.appendChild(newInputDiv);
         newInput.focus();
     }
 
+
     // =================================================================================
-    // C. DROPDOWN SUBSEKTOR EKONOMI (AUTOCOMPLETE)
+    // D. DROPDOWN (SUBSEKTOR & WILAYAH)
     // =================================================================================
     const subsektorEkonomi = [
         "Pertanian Padi", "Pertanian Jagung", "Pertanian Aneka Umbi Palawija", "Pertanian Kacang Tanah", "Pertanian Kedelai", 
@@ -251,13 +266,13 @@ document.addEventListener('DOMContentLoaded', function() {
         "Pertambangan Bahan Galian Lainnya Yang Tidak Mengandung Bijih Besi", "Pertambangan Bijih Logam Mulia Lainnya", "Pertambangan Mineral, Bahan Kimia Dan Bahan Pupuk", "Pertambangan Dan Penggalian Lainnya Ytdl", "Pertambangan Pasir Besi Dan Bijih Besi", 
         "Penggalian Batu, Pasir Dan Tanah Liat", "Ketenagalistrikan Pedesaan", "Ketenagalistrikan Lainnya", "Pengadaan Dan Distribusi Gas Alam Dan Buatan", "Pengadaan Uap/Air Panas, Udara Dingin Dan Produksi Es", "Pengelolaan Air"
     ];
+
     let currentFocusIndex = -1;
 
     function showDropdownOptions(searchTerm) {
-        const filtered = subsektorEkonomi.filter(o => o.toLowerCase().includes(searchTerm));
+        const filtered = subsektorEkonomi.filter(o => o.toLowerCase().includes(searchTerm.toLowerCase()));
         subsektorList.innerHTML = '';
         currentFocusIndex = -1;
-
         if (filtered.length > 0) {
             filtered.slice(0, 10).forEach(option => {
                 const div = document.createElement('div');
@@ -280,11 +295,6 @@ document.addEventListener('DOMContentLoaded', function() {
         subsektorInput.value = value;
         subsektorList.style.display = 'none';
     }
-
-    // =================================================================================
-    // D. API WILAYAH INDONESIA
-    // =================================================================================
-    const API_WILAYAH_BASE_URL = 'https://www.emsifa.com/api-wilayah-indonesia/api';
 
     async function fetchData(url) {
         try {
@@ -316,212 +326,162 @@ document.addEventListener('DOMContentLoaded', function() {
         selectEl.disabled = true;
     }
 
-    // =================================================================================
-    // E. FUNGSI UTAMA (SUBMIT & RENDER HASIL)
-    // =================================================================================
-    function showError(message) {
-        errorText.textContent = message;
-        errorDiv.style.display = 'block';
-        loadingDiv.style.display = 'none';
-        resultDiv.style.display = 'none';
-        submitBtn.disabled = false;
-    }
-
-    function getNestedValue(obj, path) {
-        return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-    }
 
     /**
      * Merender data hasil screening ke dalam tabel HTML.
-     * @param {object|object[]} data - Objek tunggal atau array berisi satu objek data hasil.
+     * Kode ini telah diperbarui untuk menangani struktur JSON yang baru dan nested.
      */
     function renderResults(data) {
         const obj = Array.isArray(data) ? data[0] : data;
-
         if (!obj) {
-            showError("Tidak ada data yang diterima dari server.");
+            showError("Tidak ada data yang diterima untuk ditampilkan.");
             return;
         }
 
-        // Konfigurasi tabel (tetap sama)
-        const tableConfigs = [{
-            title: 'Hasil Screening',
-            fields: {
-                'nama_lengkap': 'Nama Lengkap',
-                'tanggal_screening': 'Tanggal Screening',
-                'quick_decision.pep': 'Status PEP',
-                'quick_decision.watchlist': 'Status Watchlist',
-                'quick_decision.berita_negatif': 'Pemberitaan Negatif',
-                // 'quick_decision.media_sosial': 'Aktivitas Media Sosial',
-                'quick_decision.sentimen': 'Sentimen Negatif',
+        // KONFIGURASI BARU: Sesuaikan path kunci dengan struktur JSON Anda
+        const tableConfigs = [
+            {
+                title: 'Ringkasan Hasil Screening',
+                fields: {
+                    // Path menunjuk ke dalam objek 'screening_pep' dan array 'results'
+                    'screening_pep.results.0.name': 'Nama Lengkap',
+                    'screening_pep.timestamp_utc': 'Tanggal Screening',
+                    'screening_pep.pep_status': 'Status PEP',
+                    'pemeriksaan_hukum.keterlibatan_hukum': 'Status Hukum',
+                    'pemberitaan_negatif.pemberitaan_negatif': 'Status Pemberitaan Negatif'
+                }
+            },
+            {
+                title: 'Analisis Risiko',
+                fields: {
+                    // Path yang lebih dalam untuk mengakses data risk_assessment
+                    'screening_pep.results.0.risk_assessment.risk_level': 'Tingkat Risiko',
+                    'screening_pep.results.0.risk_assessment.rationale': 'Faktor Risiko',
+                    'screening_pep.results.0.risk_assessment.mitigating_factors': 'Faktor Peringan',
+                    'screening_pep.results.0.risk_assessment.recommended_actions': 'Tindakan yang Direkomendasikan'
+                }
+            },
+            {
+                title: 'Detail PEP (Politically Exposed Person)',
+                fields: {
+                    'screening_pep.alasan_pep': 'Alasan Status PEP',
+                    'screening_pep.results.0.pep_status': 'Detail Status PEP', // Ini adalah objek
+                    'screening_pep.results.0.positions': 'Jabatan/Posisi', // Ini adalah objek
+                    'screening_pep.results.0.summary': 'Ringkasan Profil',
+                    'screening_pep.notes_limitations': 'Catatan & Keterbatasan'
+                }
+            },
+            {
+                title: 'Detail Keterlibatan Hukum',
+                fields: {
+                    'pemeriksaan_hukum.keterlibatan_hukum': 'Status',
+                    'pemeriksaan_hukum.disambiguasi.catatan': 'Catatan Disambiguasi',
+                    'pemeriksaan_hukum.tingkat_keyakinan': 'Tingkat Keyakinan'
+                }
+            },
+            {
+                title: 'Detail Pemberitaan Negatif',
+                fields: {
+                    'pemberitaan_negatif.pemberitaan_negatif': 'Status',
+                    'pemberitaan_negatif.ringkasan_umum': 'Ringkasan Umum'
+                }
             }
-        }, {
-            title: 'Analisis Risiko',
-            fields: {
-                'kelayakan_kredit': 'Kelayakan Kredit',
-                'rekomendasi_kredit': 'Rekomendasi Kredit',
-                'calculated_risk_score': 'Skor Risiko',
-                'risk_factors': 'Faktor Risiko',
-                'karakter_assessment': 'Penilaian Karakter',
-                'ringkasan_komprehensif': 'Ringkasan Analisis',
-                'sumber_referensi': 'Sumber Referensi'
-            }
-        }, {
-            title: 'Detail PEP',
-            fields: {
-                'pep_status': 'Status PEP',
-                'pep_detail': 'Detail PEP'
-            }
-        }, {
-            title: 'Detail Watchlist',
-            fields: {
-                'watchlist_status': 'Status Watchlist',
-                'watchlist_detail': 'Detail Watchlist'
-            }
-        }, {
-            title: 'Pemberitaan Negatif',
-            fields: {
-                'pemberitaan_negatif_status': 'Status Berita Negatif',
-                'pemberitaan_negatif_detail': 'Detail Berita'
-            }
-        }, {
-            title: 'Analisis Media Sosial',
-            fields: {
-                // 'media_sosial_negatif_status': 'Status Negatif',
-                // 'media_sosial_negatif_detail': 'Detail Aktivitas',
-                'sentimen_media_sosial': 'Sentimen',
-                'sentimen_detail': 'Detail Sentimen'
-            }
-        }];
+        ];
 
         let html = '';
-
         tableConfigs.forEach(config => {
-            // Pengecekan apakah ada data untuk ditampilkan di tabel ini
+            // Cek apakah ada data yang relevan untuk tabel ini sebelum merendernya
             const hasData = Object.keys(config.fields).some(key => {
                 const value = getNestedValue(obj, key);
-                return value !== null && value !== undefined && value !== '';
+                return value !== null && value !== undefined && value !== '' && (!Array.isArray(value) || value.length > 0);
             });
 
             if (hasData) {
-                html += `<h3>${config.title}</h3>`;
-                html += '<table class="result-table"><tbody>';
-
+                html += `<h3>${config.title}</h3><table class="result-table"><tbody>`;
                 for (const key in config.fields) {
                     const label = config.fields[key];
                     let value = getNestedValue(obj, key);
 
-                    // --- PERUBAHAN DIMULAI ---
-                    // Logika khusus untuk 'watchlist_detail'
-                    // Jika status watchlist adalah 'Tidak Ditemukan', paksa detailnya menjadi '-'
-                    if (key === 'watchlist_detail') {
-                        const watchlistStatus = getNestedValue(obj, 'watchlist_status');
-                        // Anda bisa menyesuaikan string 'Tidak Ditemukan' jika nilainya berbeda
-                        if (watchlistStatus === 'Tidak Ditemukan' || watchlistStatus === 'Not Found') {
-                            value = '-';
-                        }
-                    }
-                    // --- PERUBAHAN SELESAI ---
-
-
-                    // Logika format nilai yang sudah ada (dipertahankan)
-                    if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-                        value = '-';
+                    let formattedValue = '';
+                    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+                        formattedValue = '-';
+                    } else if (Array.isArray(value) && value.every(item => typeof item === 'object' && item !== null)) {
+                        // PENINGKATAN: Logika untuk merender array berisi objek (seperti 'sources')
+                        formattedValue = '<ul class="details-list">';
+                        value.forEach(item => {
+                            formattedValue += '<li>';
+                            for (const itemKey in item) {
+                                formattedValue += `<strong>${itemKey.replace(/_/g, ' ')}:</strong> ${item[itemKey]}<br>`;
+                            }
+                            formattedValue += '</li>';
+                        });
+                        formattedValue += '</ul>';
                     } else if (Array.isArray(value)) {
-                        // Cek apakah elemen di dalam array adalah objek
-                        if (typeof value[0] === 'object' && value[0] !== null) {
-                            // Jika ya, format sebagai daftar detail
-                            let listHtml = '<ul class="details-list">';
-                            value.forEach(item => {
-                                listHtml += '<li>';
-                                let itemDetails = '';
-                                for (const itemKey in item) {
-                                    // Format setiap key-value dari objek
-                                    itemDetails += `<div><strong>${itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${item[itemKey]}</div>`;
-                                }
-                                listHtml += `${itemDetails}</li>`;
-                            });
-                            listHtml += '</ul>';
-                            value = listHtml;
-                        } else {
-                            // Jika bukan objek (misal array of strings/links), gunakan logika lama
-                            value = value.map(v =>
-                                String(v).startsWith('http') ?
-                                `<a href="${v}" target="_blank" rel="noopener noreferrer">${v}</a>` : v
-                            ).join('<br>');
-                        }
+                        // Render array biasa (string atau angka)
+                        formattedValue = `<ul class="details-list"><li>${value.join('</li><li>')}</li></ul>`;
                     } else if (typeof value === 'object' && value !== null) {
-                        // Menangani jika nilainya adalah satu objek (bukan array)
-                        let objectDetails = '<div class="details-object">';
+                        // Render objek biasa
+                        formattedValue = '<div class="details-object">';
                         for (const itemKey in value) {
-                            objectDetails += `<div><strong>${itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value[itemKey]}</div>`;
+                            let subValue = value[itemKey];
+                            if (Array.isArray(subValue)) {
+                                subValue = subValue.join(', ');
+                            }
+                            formattedValue += `<div><strong>${itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${subValue}</div>`;
                         }
-                        objectDetails += '</div>';
-                        value = objectDetails;
-                    } else if (typeof value === 'string' && value.startsWith('http')) {
-                        value = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`;
+                        formattedValue += '</div>';
+                    } else {
+                        formattedValue = value;
                     }
-
-                    html += `<tr><td>${label}</td><td>${value}</td></tr>`;
+                    html += `<tr><td>${label}</td><td>${formattedValue}</td></tr>`;
                 }
-
                 html += '</tbody></table>';
             }
         });
-
         resultDiv.innerHTML = html;
         resultDiv.style.display = 'block';
     }
 
-    // Asumsi Anda memiliki fungsi getNestedValue dan showError
+    /**
+     * Helper function to get a value from a nested object using a dot-notation string.
+     * Pastikan fungsi ini ada di dalam scope kode Anda.
+     */
     function getNestedValue(obj, path) {
+        if (!path) return undefined;
         return path.split('.').reduce((acc, part) => acc && acc[part], obj);
     }
 
-    function showError(message) {
-        console.error(message);
-        // Tampilkan pesan error di UI jika perlu
-        const resultDiv = document.getElementById('result'); // Ganti dengan ID elemen Anda
-        if (resultDiv) {
-            resultDiv.innerHTML = `<div class="error-message">${message}</div>`;
-            resultDiv.style.display = 'block';
-        }
-    }
-
-
+    /**
+     * Menangani proses submit form, memanggil API, dan menampilkan hasilnya.
+     */
     async function handleFormSubmit(e) {
         e.preventDefault();
-
-        resultDiv.style.display = 'none';
-        errorDiv.style.display = 'none';
+        resetResultDisplay();
         loadingDiv.style.display = 'block';
         submitBtn.disabled = true;
 
-        let API_URL = '';
         const params = new URLSearchParams();
-        const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
-        // const BASE_API_URL = 'http://localhost:5678/webhook/sbp';
+        const BASE_API_URL = 'http://10.63.144.146:5678/webhook-test/sbp';
+        let API_URL = '';
 
         if (btnPerorangan.classList.contains('active')) {
-            const namaPeroranganValue = document.getElementById('namaPerorangan').value.trim();
-            if (!namaPeroranganValue) {
+            const namaLengkap = document.getElementById('namaPerorangan').value.trim();
+            if (!namaLengkap) {
                 showError("Nama lengkap wajib diisi.");
                 return;
             }
-            params.append('nama_lengkap', namaPeroranganValue);
+            params.append('nama_lengkap', namaLengkap);
             API_URL = `${BASE_API_URL}/perorangan?${params.toString()}`;
         } else if (btnBadanUsaha.classList.contains('active')) {
             const namaUsaha = document.getElementById('namaUsaha').value.trim();
             const lamaUsaha = document.getElementById('lamaUsaha').value.trim();
             const namaPemilik = [...document.querySelectorAll('input[name="namaPemilik[]"]')]
-                .map(el => el.value.trim())
-                .filter(v => v !== '');
+                .map(el => el.value.trim()).filter(Boolean);
 
             if (!namaUsaha || !lamaUsaha || namaPemilik.length === 0) {
                 showError("Nama Usaha, Lama Usaha, dan minimal satu Nama Pemilik wajib diisi.");
                 return;
             }
-
             params.append('nama_usaha', namaUsaha);
             params.append('lama_usaha', lamaUsaha);
             namaPemilik.forEach(pemilik => params.append('nama_pemilik[]', pemilik));
@@ -529,25 +489,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            console.log("Mengirim request ke:", API_URL);
             const response = await fetch(API_URL);
             if (!response.ok) {
-                throw new Error(`Gagal menghubungi server. Status: ${response.status} ${response.statusText}`);
+                throw new Error(`Gagal menghubungi server. Status: ${response.status}`);
             }
             const data = await response.json();
             renderResults(data);
         } catch (error) {
             console.error('Terjadi kesalahan:', error);
-            showError(`Terjadi kesalahan saat memproses data. Silakan coba lagi. Detail: ${error.message}`);
+            showError(`Terjadi kesalahan saat memproses data. Detail: ${error.message}`);
         } finally {
             loadingDiv.style.display = 'none';
             submitBtn.disabled = false;
         }
     }
 
+
     // =================================================================================
     // F. INISIALISASI & EVENT LISTENERS
     // =================================================================================
+
+    // Event listener untuk tab
     btnPerorangan.addEventListener("click", () => {
         resetTabs();
         btnPerorangan.classList.add("active");
@@ -555,7 +517,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleInputs(formPerorangan, true);
         toggleInputs(formBadanUsaha, false);
         resetFormPerorangan();
-        resetResultDisplay(); // <-- PERUBAHAN DI SINI
+        resetResultDisplay();
     });
 
     btnBadanUsaha.addEventListener("click", () => {
@@ -565,19 +527,16 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleInputs(formBadanUsaha, true);
         toggleInputs(formPerorangan, false);
         resetFormBadanUsaha();
-        resetResultDisplay(); // <-- PERUBAHAN DI SINI
+        resetResultDisplay();
     });
 
     tambahPemilikBtn.addEventListener("click", tambahPemilik);
 
+    // Event listener untuk autocomplete subsektor
     subsektorInput.addEventListener('focus', () => showDropdownOptions(''));
-    subsektorInput.addEventListener('input', function() {
-        showDropdownOptions(this.value.toLowerCase());
-    });
-    subsektorInput.addEventListener('blur', () => {
-        setTimeout(() => subsektorList.style.display = 'none', 200);
-    });
-    subsektorInput.addEventListener('keydown', function(e) {
+    subsektorInput.addEventListener('input', (e) => showDropdownOptions(e.target.value));
+    subsektorInput.addEventListener('blur', () => setTimeout(() => subsektorList.style.display = 'none', 200));
+    subsektorInput.addEventListener('keydown', (e) => {
         const items = subsektorList.querySelectorAll('.dropdown-item');
         if (!items.length) return;
         if (e.key === 'ArrowDown') {
@@ -596,14 +555,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Event listener untuk dropdown wilayah
     provinsiSelect.addEventListener('change', async function() {
         resetSelect(kotaSelect, 'Pilih Kota/Kabupaten');
         resetSelect(kecamatanSelect, 'Pilih Kecamatan');
         resetSelect(kelurahanSelect, 'Pilih Kelurahan/Desa');
         if (this.value) {
             kotaSelect.innerHTML = `<option class="loading-option">Memuat...</option>`;
-            const regencies = await fetchData(`${API_WILAYAH_BASE_URL}/regencies/${this.value}.json`);
-            if (regencies) populateSelect(kotaSelect, regencies, 'id', 'name', 'Pilih Kota/Kabupaten');
+            const regencies = await fetchData(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${this.value}.json`);
+            populateSelect(kotaSelect, regencies, 'id', 'name', 'Pilih Kota/Kabupaten');
         }
     });
 
@@ -612,8 +572,8 @@ document.addEventListener('DOMContentLoaded', function() {
         resetSelect(kelurahanSelect, 'Pilih Kelurahan/Desa');
         if (this.value) {
             kecamatanSelect.innerHTML = `<option class="loading-option">Memuat...</option>`;
-            const districts = await fetchData(`${API_WILAYAH_BASE_URL}/districts/${this.value}.json`);
-            if (districts) populateSelect(kecamatanSelect, districts, 'id', 'name', 'Pilih Kecamatan');
+            const districts = await fetchData(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${this.value}.json`);
+            populateSelect(kecamatanSelect, districts, 'id', 'name', 'Pilih Kecamatan');
         }
     });
 
@@ -621,25 +581,21 @@ document.addEventListener('DOMContentLoaded', function() {
         resetSelect(kelurahanSelect, 'Pilih Kelurahan/Desa');
         if (this.value) {
             kelurahanSelect.innerHTML = `<option class="loading-option">Memuat...</option>`;
-            const villages = await fetchData(`${API_WILAYAH_BASE_URL}/villages/${this.value}.json`);
-            if (villages) populateSelect(kelurahanSelect, villages, 'id', 'name', 'Pilih Kelurahan/Desa');
+            const villages = await fetchData(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${this.value}.json`);
+            populateSelect(kelurahanSelect, villages, 'id', 'name', 'Pilih Kelurahan/Desa');
         }
     });
 
+    // Event listener utama untuk submit form
     creditForm.addEventListener('submit', handleFormSubmit);
 
+    // Fungsi inisialisasi saat halaman pertama kali dimuat
     (async function initialize() {
-        const provinces = await fetchData(`${API_WILAYAH_BASE_URL}/provinces.json`);
-        if (provinces) {
-            populateSelect(provinsiSelect, provinces, 'id', 'name', 'Pilih Provinsi');
-        }
+        const provinces = await fetchData(`https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json`);
+        populateSelect(provinsiSelect, provinces, 'id', 'name', 'Pilih Provinsi');
 
-        // Atur kondisi awal saat halaman dimuat
         toggleInputs(formPerorangan, true);
         toggleInputs(formBadanUsaha, false);
-
-        if (inputPerorangan) {
-            inputPerorangan.focus();
-        }
+        inputPerorangan.focus();
     })();
 });
