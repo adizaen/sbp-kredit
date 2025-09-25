@@ -352,9 +352,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 fields: {
                     'nama_lengkap': 'Nama Lengkap',
                     'tanggal_screening': 'Tanggal Screening',
-                    'matriks_keputusan_cepat.pep': 'Status Cepat (PEP)',
-                    'matriks_keputusan_cepat.hukum': 'Status Cepat (Hukum)',
-                    'matriks_keputusan_cepat.berita_negatif': 'Status Cepat (Berita Negatif)'
+                    'matriks_keputusan_cepat.pep': 'Status PEP',
+                    'matriks_keputusan_cepat.hukum': 'Keterlibatan Hukum',
+                    'matriks_keputusan_cepat.berita_negatif': 'Berita Negatif'
                 }
             },
             {
