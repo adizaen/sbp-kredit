@@ -239,44 +239,37 @@ select:disabled {
     padding-bottom: 10px;
 }
 
-.result table {
+.result-table {
     width: 100%;
     border-collapse: collapse;
+    margin-bottom: 25px;
 }
 
-.result td {
+.result-table > tbody > tr > td {
     border: 1px solid #555;
     padding: 12px;
     text-align: left;
     white-space: normal;
-    word-wrap: break-word;
-    word-break: break-word;
+    word-wrap: break-word; 
+    word-break: break-word; 
     max-width: 300px;
-    vertical-align: top; /* Memastikan selaras di atas */
+    vertical-align: top;
 }
 
-.result td:first-child {
+.result-table > tbody > tr > td:first-child {
     font-weight: bold;
     color: #cccccc;
     width: 35%;
     background-color: #3a3a3a;
 }
 
-/* === KODE BARU UNTUK STYLING LIST === */
-.result td ul {
-    padding-left: 25px; /* Memberi ruang di kiri untuk bullet point */
-    list-style-position: inside; /* Memastikan bullet point ada di dalam padding */
+.details-list {
+    padding-left: 20px;
 }
 
-.result td ul li {
-    margin-bottom: 8px; /* Memberi jarak vertikal antar item */
+.details-list li {
+    margin-bottom: 5px;
 }
-
-.result td ul li:last-child {
-    margin-bottom: 0; /* Menghapus margin pada item terakhir agar rapi */
-}
-/* === AKHIR KODE BARU === */
-
 
 .error {
     display: none;
@@ -288,9 +281,75 @@ select:disabled {
     color: #ff6b6b;
 }
 
-.result-table {
-    margin-bottom: 25px;
+/* ===== Styling for Nested Detail Item Tables ===== */
+.detail-item-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px; 
+    border: 1px solid #4a4a4a;
+    border-radius: 6px;
+    overflow: hidden; 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
+
+.detail-item-table:first-of-type {
+    margin-top: 10px;
+}
+
+/* [PERBAIKAN] Header styling */
+.detail-item-table thead {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    font-weight: 600;
+}
+
+.detail-item-table th {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid #555;
+}
+
+.detail-item-table td, .detail-item-table th {
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid #4a4a4a;
+    /* [PERBAIKAN] Atasi masalah teks vertikal */
+    word-break: normal; 
+    white-space: normal;
+}
+
+.detail-item-table tr:last-child td {
+    border-bottom: none;
+}
+
+.detail-item-table td:first-child,
+.detail-item-table th:first-child {
+    width: 50px; /* Lebar untuk kolom 'No.' */
+    text-align: center;
+}
+
+.detail-item-table td a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.detail-item-table td a:hover {
+    text-decoration: underline;
+}
+
+/* Kolom khusus untuk tabel Faktor Risiko */
+.result-table table th:nth-child(2) {
+    width: auto;
+}
+.result-table table th:nth-child(3) {
+    width: 80px;
+    text-align: center;
+}
+.result-table table td:nth-child(3) {
+    text-align: center;
+}
+
 
 /* ===== Tab Selector ===== */
 .tab-select {
@@ -342,60 +401,20 @@ select:disabled {
 .dynamic-input {
     display: flex;
     align-items: center;
-    gap: 8px; /* jarak antara input dan tombol */
+    gap: 8px;
 }
 
 .dynamic-input input {
     flex: 1;
-    padding: 14px 16px; /* sama dengan input form utama */
-    font-size: 1rem;
-    border-radius: 8px;
-    border: 2px solid #555;
-    background: #3a3a3a;
-    color: #fff;
 }
 
-.dynamic-input button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px; /* proporsional dengan input */
-    height: 48px; /* sama dengan tinggi input */
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    background-color: #3b82f6; /* background tombol tambah */
-    transition: all 0.2s ease;
-    font-size: 1.2rem;
-    color: #ffffff; /* WARNA ICON PUTIH CERAH */
-    margin-left: 8px; /* jarak dari input */
+.dynamic-input .btnRemove {
+    background-color: #ef4444;
 }
-
-.dynamic-input button:hover {
-    background-color: #2563eb; /* lebih gelap saat hover */
-    transform: scale(1.05);
-}
-
-.dynamic-input button.delete {
-    background-color: #ef4444; /* merah untuk hapus */
-    color: #ffffff; /* icon putih cerah */
-}
-
-.dynamic-input button.delete:hover {
+.dynamic-input .btnRemove:hover {
     background-color: #dc2626;
 }
 
-.dynamic-input input:focus,
-#namaPerorangan:focus {
-    border-color: #4CAF50;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
-    background: #404040;
-    outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-
-/* Tombol tambah utama */
 #tambahPemilik {
     align-self: flex-start;
     width: 48px;
@@ -406,11 +425,11 @@ select:disabled {
     border-radius: 8px;
     border: none;
     background-color: #3b82f6;
-    color: #ffffff; /* icon putih cerah */
+    color: #ffffff;
     cursor: pointer;
     font-size: 1.2rem;
     transition: all 0.2s ease;
-    margin-top: 8px; /* jarak dari input terakhir */
+    margin-top: 8px;
 }
 
 #tambahPemilik:hover {
@@ -423,7 +442,7 @@ select:disabled {
         max-width: 90%;
     }
     .location-grid {
-        grid-template-columns: 1fr 1fr; /* 2 kolom di tablet */
+        grid-template-columns: 1fr 1fr;
         gap: 12px;
     }
 
@@ -437,36 +456,9 @@ select:disabled {
     .container {
         max-width: 95%;
     }
-    /* Location grid jadi 1 kolom */
     .location-grid {
         grid-template-columns: 1fr;
         gap: 15px;
-    }
-
-    /* Dynamic input stack vertikal */
-    .dynamic-input {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .dynamic-input button {
-        width: 100%;
-        height: 48px;
-        margin-left: 0;
-        margin-top: 8px;
-    }
-
-    /* Tombol tambah utama */
-    #tambahPemilik {
-        width: 48px;
-        height: 48px;
-        margin-top: 10px;
-    }
-
-    /* Tab button lebih kecil */
-    .tab-select button {
-        font-size: 0.95rem;
-        padding: 12px 10px;
     }
 
     .form-container {
@@ -490,40 +482,8 @@ select:disabled {
         max-width: 100%;
         border-radius: 16px;
     }
-    /* Semua input dan tombol full width */
-    input, select {
-        padding: 12px 14px;
-        font-size: 0.95rem;
-    }
-
-    .dynamic-input input {
-        font-size: 0.95rem;
-        padding: 12px 14px;
-    }
-
-    .submit-btn {
-        font-size: 1rem;
-        padding: 14px;
-    }
-
     .tab-select {
         flex-direction: column;
         gap: 10px;
     }
-
-    .tab-select button {
-        width: 100%;
-        padding: 12px 0;
-    }
-
-    #tambahPemilik {
-        width: 100%;
-        height: 48px;
-        margin-top: 10px;
-    }
-}
-
-/* Optional: Smooth transitions for resizing */
-input, select, .dynamic-input button, #tambahPemilik {
-    transition: all 0.2s ease-in-out;
 }
