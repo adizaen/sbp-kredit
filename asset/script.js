@@ -326,17 +326,26 @@ document.addEventListener('DOMContentLoaded', function() {
         selectEl.disabled = true;
     }
 
-
     /**
      * Merender data hasil screening ke dalam tabel HTML.
-     * JABATAN/POSISI: Diberikan format khusus untuk memisahkan Current & Historical.
+     * Fungsi ini sekarang berisi logika untuk mentransformasi JSON mentah
+     * agar sesuai dengan format yang diharapkan oleh 'tableConfigs'.
      */
     function renderResults(data) {
-        const obj = Array.isArray(data) ? data[0] : data;
-        if (!obj) {
+        // --- AWAL BLOK TRANSFORMASI DATA ---
+        const rawData = Array.isArray(data) ? data[0] : data;
+        if (!rawData) {
             showError("Tidak ada data yang diterima untuk ditampilkan.");
             return;
         }
+
+        // 'obj' adalah objek baru yang akan kita buat agar strukturnya cocok dengan tableConfigs
+        const obj = {};
+        
+        // Ambil nama subjek dari form input untuk ditampilkan di ringkasan
+        const subjectName = btnPerorangan.classList.contains('active')
+            ? document.getElementById('namaPerorangan').value.trim()
+            : (document.querySelector('input[name="namaPemilik[]"]')?.value.trim() || document.getElementById('namaUsaha').value.trim());
 
         // Fungsi bantuan untuk menormalisasi status (Tidak perlu diubah)
         function normalizeStatus(status) {
@@ -344,6 +353,141 @@ document.addEventListener('DOMContentLoaded', function() {
             const normalized = status.toString().toLowerCase().trim();
             return normalized.includes("ditemukan") && !normalized.includes("tidak") ? "ditemukan" : "tidak ditemukan";
         }
+        
+        const formatHukumDetail = (hukumData) => {
+            if (!hukumData || !hukumData.keterlibatan_hukum || normalizeStatus(hukumData.keterlibatan_hukum) === 'tidak ditemukan') return '-';
+            
+            let detailHtml = `<p>${hukumData.alasan_keterlibatan_hukum || 'Tidak ada ringkasan.'}</p>`;
+            if (hukumData.peran_tercatat && hukumData.peran_tercatat.length > 0) {
+                hukumData.peran_tercatat.forEach(item => {
+                    const links = item.tautan_sumber ? item.tautan_sumber.map(linkUrl => {
+                        const sourceInfo = hukumData.daftar_sumber?.find(s => s.url === linkUrl);
+                        const publisherName = sourceInfo ? sourceInfo.sumber : (new URL(linkUrl)).hostname.replace('www.','');
+                        return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${publisherName}</a>`;
+                    }).join('<br>') : 'Tidak ada';
+                    
+                    detailHtml += `
+                        <table class="detail-item-table key-value-table">
+                            <thead><tr><th>Properti</th><th>Detail</th></tr></thead>
+                            <tbody>
+                                <tr><td>Peran</td><td>${item.peran || '-'}</td></tr>
+                                <tr><td>Ringkasan</td><td>${item.ringkasan || '-'}</td></tr>
+                                <tr><td>Lembaga</td><td>${item.lembaga || '-'}</td></tr>
+                                <tr><td>Tautan</td><td>${links}</td></tr>
+                            </tbody>
+                        </table>`;
+                });
+            }
+            return detailHtml;
+        };
+
+        const formatBeritaNegatifDetail = (beritaData) => {
+            if (!beritaData || !beritaData.pemberitaan_negatif || normalizeStatus(beritaData.pemberitaan_negatif) === 'tidak ditemukan') return '-';
+
+            let detailHtml = `<p>${beritaData.alasan_pemberitaan_negatif || 'Tidak ada ringkasan.'}</p>`;
+            if (beritaData.detail_pemberitaan && beritaData.detail_pemberitaan.length > 0) {
+                beritaData.detail_pemberitaan.forEach(item => {
+                    const link = item.tautan ? `<a href="${item.tautan}" target="_blank" rel="noopener noreferrer">${item.sumber || 'Sumber'}</a>` : (item.sumber || '-');
+                    detailHtml += `
+                        <table class="detail-item-table key-value-table">
+                            <thead><tr><th>Properti</th><th>Detail</th></tr></thead>
+                            <tbody>
+                                <tr><td>Kategori</td><td>${item.kategori || '-'}</td></tr>
+                                <tr><td>Deskripsi</td><td>${item.deskripsi || '-'}</td></tr>
+                                <tr><td>Sumber</td><td>${link}</td></tr>
+                            </tbody>
+                        </table>`;
+                });
+            }
+            return detailHtml;
+        };
+
+        const formatFaktorRisiko = (faktorArr) => {
+            if (!faktorArr || faktorArr.length === 0) return '-';
+            let tableHtml = '<table class="detail-item-table"><thead><tr><th>No.</th><th>Faktor Risiko</th><th>Skor</th></tr></thead><tbody>';
+            faktorArr.forEach((item, index) => {
+                tableHtml += `<tr><td>${index + 1}</td><td>${item}</td><td>+2</td></tr>`;
+            });
+            tableHtml += '</tbody></table>';
+            return tableHtml;
+        };
+
+        const formatRekomendasi = (rekomendasiArr) => {
+            if (!rekomendasiArr || rekomendasiArr.length === 0) return '-';
+             let tableHtml = '<table class="detail-item-table"><thead><tr><th>No.</th><th>Aksi</th></tr></thead><tbody>';
+            rekomendasiArr.forEach((item, index) => {
+                tableHtml += `<tr><td>${index + 1}</td><td>${item}</td></tr>`;
+            });
+            tableHtml += '</tbody></table>';
+            return tableHtml;
+        };
+
+        // --- AWAL BLOK PERHITUNGAN RISIKO BARU ---
+        let skor = 0;
+        let faktor = [];
+
+        if (normalizeStatus(rawData.pep_status?.pep_status) === 'ditemukan') {
+            skor += 2;
+            faktor.push('PEP');
+        }
+
+        if (normalizeStatus(rawData.keterlibatan_hukum?.keterlibatan_hukum) === 'ditemukan') {
+            skor += 2;
+            faktor.push('Keterlibatan Hukum');
+        }
+
+        if (normalizeStatus(rawData.berita_negatif?.pemberitaan_negatif) === 'ditemukan') {
+            skor += 2;
+            faktor.push('Berita Negatif');
+        }
+
+        let levelRisiko;
+        if (skor >= 4) {
+            levelRisiko = 'Tinggi';
+        } else if (skor >= 2) {
+            levelRisiko = 'Sedang';
+        } else {
+            levelRisiko = 'Rendah';
+        }
+        // --- AKHIR BLOK PERHITUNGAN RISIKO BARU ---
+
+
+        // 1. Memetakan data untuk bagian 'Ringkasan' dan 'Analisis Risiko'
+        obj.nama_lengkap = subjectName;
+        obj.tanggal_screening = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        
+        // [PERUBAHAN] Menggunakan simbol untuk status cepat
+        obj.matriks_keputusan_cepat = {
+            pep: normalizeStatus(rawData.pep_status?.pep_status) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan',
+            hukum: normalizeStatus(rawData.keterlibatan_hukum?.keterlibatan_hukum) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan',
+            berita_negatif: normalizeStatus(rawData.berita_negatif?.pemberitaan_negatif) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan'
+        };
+        
+        obj.skor_risiko = `${skor}/6`;
+        obj.kelayakan_kredit = levelRisiko;
+        obj.faktor_risiko = formatFaktorRisiko(faktor.length > 0 ? faktor : []);
+        obj.rekomendasi_kredit = formatRekomendasi(rawData.pep_status?.results?.[0]?.risk_assessment?.recommended_actions || []);
+
+
+        // 2. Memetakan data untuk bagian 'Detail PEP'
+        obj.pep_status = rawData.pep_status?.pep_status;
+        obj.pep_detail = rawData.pep_status?.alasan_pep;
+        obj.raw_data = {
+            screening_pep: {
+                results: rawData.pep_status?.results || [{}],
+                notes_limitations: rawData.pep_status?.notes_limitations
+            }
+        };
+
+        // 3. Memetakan data untuk bagian 'Detail Keterlibatan Hukum'
+        obj.keterlibatan_hukum_status = rawData.keterlibatan_hukum?.keterlibatan_hukum;
+        obj.keterlibatan_hukum_detail = formatHukumDetail(rawData.keterlibatan_hukum);
+
+        // 4. Memetakan data untuk bagian 'Detail Pemberitaan Negatif'
+        obj.pemberitaan_negatif_status = rawData.berita_negatif?.pemberitaan_negatif;
+        obj.pemberitaan_negatif_detail = formatBeritaNegatifDetail(rawData.berita_negatif);
+        // --- AKHIR BLOK TRANSFORMASI DATA ---
+
 
         // Konfigurasi Tabel (Tidak perlu diubah)
         const tableConfigs = [
@@ -373,7 +517,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     'pep_status': 'Status PEP',
                     'pep_detail': 'Ringkasan/Alasan PEP',
                     'raw_data.screening_pep.results.0.pep_status.category': 'Kategori PEP',
-                    // Path untuk Jabatan/Posisi
                     'raw_data.screening_pep.results.0.positions': 'Jabatan/Posisi Teridentifikasi',
                     'raw_data.screening_pep.notes_limitations': 'Catatan & Keterbatasan'
                 }
@@ -414,23 +557,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
                     formattedValue = '-';
                 } else if (Array.isArray(value)) {
-                    // ... (logika array tidak diubah)
-                    if (key === 'faktor_risiko') {
-                        if (value.length === 1) {
-                            formattedValue = value[0];
-                        } else {
-                            formattedValue = `<ol class="details-list"><li>${value.join('</li><li>')}</li></ol>`;
-                        }
-                    } else {
+                     if (value.length === 1 && value[0] === '-') {
+                         formattedValue = '-';
+                     } else {
                         formattedValue = `<ul class="details-list"><li>${value.join('</li><li>')}</li></ul>`;
-                    }
+                     }
                 } else if (typeof value === 'object' && value !== null) {
-                    // --- PERUBAHAN UTAMA DI SINI ---
-                    // Cek apakah ini adalah objek 'positions'
                     if (key === 'raw_data.screening_pep.results.0.positions') {
                         formattedValue = '<div class="positions-detail">';
                         
-                        // Bagian Current or Recent
                         const current = value.current_or_recent || [];
                         formattedValue += '<strong>Current or Recent:</strong>';
                         if (current.length > 0) {
@@ -439,19 +574,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             formattedValue += ' -<br>';
                         }
 
-                        // Bagian Historical
                         const historical = value.historical || [];
                         formattedValue += '<strong>Historical:</strong>';
                         if (historical.length > 0) {
                             formattedValue += `<ul class="details-list"><li>${historical.join('</li><li>')}</li></ul>`;
                         } else {
-                            // Jika historical kosong, tampilkan strip
                             formattedValue += ' -';
                         }
 
                         formattedValue += '</div>';
                     } else {
-                        // Untuk objek lain, gunakan format generik seperti biasa
                         formattedValue = '<div class="details-object">';
                         for (const itemKey in value) {
                             let subValue = value[itemKey];
@@ -482,6 +614,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return path.split('.').reduce((acc, part) => acc && acc[part], obj);
     }
 
+
+
+
     /**
      * Menangani proses submit form, memanggil API, dan menampilkan hasilnya.
      */
@@ -492,6 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
 
         const params = new URLSearchParams();
+        // const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
         const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
         let API_URL = '';
 
