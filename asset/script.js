@@ -55,6 +55,55 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    /**
+     * Membuat elemen upload KTP
+     */
+    function createKTPUploadElement(id, labelText) {
+        const container = document.createElement('div');
+        container.className = 'form-group ktp-upload-container';
+        container.id = id;
+        
+        const label = document.createElement('label');
+        label.textContent = labelText;
+        label.setAttribute('for', `${id}_input`);
+        
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.id = `${id}_input`;
+        input.name = 'ktp_file';
+        input.accept = 'image/*,.pdf';
+        input.className = 'form-input';
+        
+        const fileInfo = document.createElement('div');
+        fileInfo.className = 'file-info';
+        fileInfo.style.marginTop = '8px';
+        fileInfo.style.fontSize = '14px';
+        fileInfo.style.color = '#666';
+        
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                fileInfo.textContent = `File: ${file.name} (${fileSize} MB)`;
+                
+                // Validasi ukuran file (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    showError('Ukuran file KTP maksimal 5MB');
+                    input.value = '';
+                    fileInfo.textContent = '';
+                }
+            } else {
+                fileInfo.textContent = '';
+            }
+        });
+        
+        container.appendChild(label);
+        container.appendChild(input);
+        container.appendChild(fileInfo);
+        
+        return container;
+    }
+
 
     // =================================================================================
     // C. MANAJEMEN TAMPILAN FORM & UI
@@ -87,6 +136,18 @@ document.addEventListener('DOMContentLoaded', function() {
         formPerorangan.querySelectorAll("input, textarea, select").forEach(el => {
             if (el.type !== "hidden") el.value = "";
         });
+        
+        // Hapus upload KTP yang lama jika ada
+        const existingKTPUpload = formPerorangan.querySelector('.ktp-upload-container');
+        if (existingKTPUpload) {
+            existingKTPUpload.remove();
+        }
+        
+        // Tambahkan upload KTP baru
+        const ktpUpload = createKTPUploadElement('ktpPeroranganUpload', 'Upload KTP');
+        const namaInput = formPerorangan.querySelector('#namaPerorangan').closest('.form-group');
+        namaInput.parentNode.insertBefore(ktpUpload, namaInput.nextSibling);
+        
         inputPerorangan.focus();
     }
 
@@ -110,6 +171,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 el.value = "";
             }
         });
+        
+        // Hapus upload KTP yang lama jika ada
+        const existingKTPUpload = formBadanUsaha.querySelector('.ktp-upload-container');
+        if (existingKTPUpload) {
+            existingKTPUpload.remove();
+        }
+        
+        // Tambahkan upload KTP baru
+        const ktpUpload = createKTPUploadElement('ktpBadanUsahaUpload', 'Upload KTP Pemilik');
+        const namaUsahaInput = formBadanUsaha.querySelector('#namaUsaha').closest('.form-group');
+        namaUsahaInput.parentNode.insertBefore(ktpUpload, namaUsahaInput.nextSibling);
+        
         defaultInput.focus();
     }
 
@@ -402,56 +475,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return detailHtml;
         };
 
-        const formatFaktorRisiko = (faktorArr) => {
-            if (!faktorArr || faktorArr.length === 0) return '-';
-            let tableHtml = '<table class="detail-item-table"><thead><tr><th>No.</th><th>Faktor Risiko</th><th>Skor</th></tr></thead><tbody>';
-            faktorArr.forEach((item, index) => {
-                tableHtml += `<tr><td>${index + 1}</td><td>${item}</td><td>+2</td></tr>`;
-            });
-            tableHtml += '</tbody></table>';
-            return tableHtml;
-        };
-
-        const formatRekomendasi = (rekomendasiArr) => {
-            if (!rekomendasiArr || rekomendasiArr.length === 0) return '-';
-             let tableHtml = '<table class="detail-item-table"><thead><tr><th>No.</th><th>Aksi</th></tr></thead><tbody>';
-            rekomendasiArr.forEach((item, index) => {
-                tableHtml += `<tr><td>${index + 1}</td><td>${item}</td></tr>`;
-            });
-            tableHtml += '</tbody></table>';
-            return tableHtml;
-        };
-
-        // --- AWAL BLOK PERHITUNGAN RISIKO BARU ---
-        let skor = 0;
-        let faktor = [];
-
-        if (normalizeStatus(rawData.pep_status?.pep_status) === 'ditemukan') {
-            skor += 2;
-            faktor.push('PEP');
-        }
-
-        if (normalizeStatus(rawData.keterlibatan_hukum?.keterlibatan_hukum) === 'ditemukan') {
-            skor += 2;
-            faktor.push('Keterlibatan Hukum');
-        }
-
-        if (normalizeStatus(rawData.berita_negatif?.pemberitaan_negatif) === 'ditemukan') {
-            skor += 2;
-            faktor.push('Berita Negatif');
-        }
-
-        let levelRisiko;
-        if (skor >= 4) {
-            levelRisiko = 'Tinggi';
-        } else if (skor >= 2) {
-            levelRisiko = 'Sedang';
-        } else {
-            levelRisiko = 'Rendah';
-        }
-        // --- AKHIR BLOK PERHITUNGAN RISIKO BARU ---
-
-
         // 1. Memetakan data untuk bagian 'Ringkasan' dan 'Analisis Risiko'
         obj.nama_lengkap = subjectName;
         obj.tanggal_screening = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -462,12 +485,6 @@ document.addEventListener('DOMContentLoaded', function() {
             hukum: normalizeStatus(rawData.keterlibatan_hukum?.keterlibatan_hukum) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan',
             berita_negatif: normalizeStatus(rawData.berita_negatif?.pemberitaan_negatif) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan'
         };
-        
-        obj.skor_risiko = `${skor}/6`;
-        obj.kelayakan_kredit = levelRisiko;
-        obj.faktor_risiko = formatFaktorRisiko(faktor.length > 0 ? faktor : []);
-        obj.rekomendasi_kredit = formatRekomendasi(rawData.pep_status?.results?.[0]?.risk_assessment?.recommended_actions || []);
-
 
         // 2. Memetakan data untuk bagian 'Detail PEP'
         obj.pep_status = rawData.pep_status?.pep_status;
@@ -502,15 +519,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             {
-                title: 'Analisis Risiko',
-                fields: {
-                    'skor_risiko': 'Skor Risiko',
-                    'kelayakan_kredit': 'Level Risiko',
-                    'faktor_risiko': 'Faktor Risiko',
-                    'rekomendasi_kredit': 'Rekomendasi'
-                }
-            },
-            {
                 title: 'Detail PEP (Politically Exposed Person)',
                 statusPath: 'pep_status',
                 fields: {
@@ -536,7 +544,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     'pemberitaan_negatif_status': 'Status Pemberitaan Negatif',
                     'pemberitaan_negatif_detail': 'Ringkasan/Detail Berita'
                 }
-            }
+            },
+            {
+                title: 'Detail Screening KTP',
+                statusPath: 'pemberitaan_negatif_status',
+                fields: {
+                    'status_keaslian_ktp': 'Status Keaslian',
+                    'alasan_validasi_ktp': 'Ringkasan/Detail Berita',
+                    'analisa_kualitas_dokumen_ktp': 'analisis kualitas (resolusi, warna, OCR, dll)'
+                }
+            },
         ];
 
         let html = '';
@@ -621,55 +638,72 @@ document.addEventListener('DOMContentLoaded', function() {
      * Menangani proses submit form, memanggil API, dan menampilkan hasilnya.
      */
     async function handleFormSubmit(e) {
-        e.preventDefault();
-        resetResultDisplay();
-        loadingDiv.style.display = 'block';
-        submitBtn.disabled = true;
+    e.preventDefault();
+    resetResultDisplay();
+    loadingDiv.style.display = 'block';
+    submitBtn.disabled = true;
 
-        const params = new URLSearchParams();
-        // const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
-        const BASE_API_URL = 'http://10.63.144.146:5678/webhook/sbp';
-        let API_URL = '';
+    // Use FormData instead of URLSearchParams
+    const formData = new FormData();
+    const BASE_API_URL = 'http://10.63.144.146:5678/webhook-test/sbp';
+    let API_URL = '';
 
-        if (btnPerorangan.classList.contains('active')) {
-            const namaLengkap = document.getElementById('namaPerorangan').value.trim();
-            if (!namaLengkap) {
-                showError("Nama lengkap wajib diisi.");
-                return;
-            }
-            params.append('nama_lengkap', namaLengkap);
-            API_URL = `${BASE_API_URL}/perorangan?${params.toString()}`;
-        } else if (btnBadanUsaha.classList.contains('active')) {
-            const namaUsaha = document.getElementById('namaUsaha').value.trim();
-            const lamaUsaha = document.getElementById('lamaUsaha').value.trim();
-            const namaPemilik = [...document.querySelectorAll('input[name="namaPemilik[]"]')]
-                .map(el => el.value.trim()).filter(Boolean);
+    if (btnPerorangan.classList.contains('active')) {
+        const namaLengkap = document.getElementById('namaPerorangan').value.trim();
+        const ktpFileInput = document.querySelector('#ktpPeroranganUpload_input');
 
-            if (!namaUsaha || !lamaUsaha || namaPemilik.length === 0) {
-                showError("Nama Usaha, Lama Usaha, dan minimal satu Nama Pemilik wajib diisi.");
-                return;
-            }
-            params.append('nama_usaha', namaUsaha);
-            params.append('lama_usaha', lamaUsaha);
-            namaPemilik.forEach(pemilik => params.append('nama_pemilik[]', pemilik));
-            API_URL = `${BASE_API_URL}/badan-usaha?${params.toString()}`;
+        if (!namaLengkap) {
+            showError("Nama lengkap wajib diisi.");
+            return;
+        }
+        formData.append('nama_lengkap', namaLengkap);
+
+        // attach file if available
+        if (ktpFileInput?.files[0]) {
+            formData.append('ktp_file', ktpFileInput.files[0]);
         }
 
-        try {
-            const response = await fetch(API_URL);
-            if (!response.ok) {
-                throw new Error(`Gagal menghubungi server. Status: ${response.status}`);
-            }
-            const data = await response.json();
-            renderResults(data);
-        } catch (error) {
-            console.error('Terjadi kesalahan:', error);
-            showError(`Terjadi kesalahan saat memproses data. Detail: ${error.message}`);
-        } finally {
-            loadingDiv.style.display = 'none';
-            submitBtn.disabled = false;
+        API_URL = `${BASE_API_URL}/perorangan`;
+
+    } else if (btnBadanUsaha.classList.contains('active')) {
+        const namaUsaha = document.getElementById('namaUsaha').value.trim();
+        const lamaUsaha = document.getElementById('lamaUsaha').value.trim();
+        const namaPemilik = [...document.querySelectorAll('input[name="namaPemilik[]"]')]
+            .map(el => el.value.trim()).filter(Boolean);
+        const ktpFileInput = document.querySelector('#ktpBadanUsahaUpload_input');
+
+        if (!namaUsaha || !lamaUsaha || namaPemilik.length === 0) {
+            showError("Nama Usaha, Lama Usaha, dan minimal satu Nama Pemilik wajib diisi.");
+            return;
         }
+
+        formData.append('nama_usaha', namaUsaha);
+        formData.append('lama_usaha', lamaUsaha);
+        namaPemilik.forEach(pemilik => formData.append('nama_pemilik[]', pemilik));
+
+        if (ktpFileInput?.files[0]) {
+            formData.append('ktp_file', ktpFileInput.files[0]);
+        }
+
+        API_URL = `${BASE_API_URL}/badan-usaha`;
     }
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+        });
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        const data = await response.json();
+        renderResults(data);
+    } catch (err) {
+        console.error(err);
+        showError(`Gagal memproses data: ${err.message}`);
+    } finally {
+        loadingDiv.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+}
 
 
     // =================================================================================
@@ -763,6 +797,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         toggleInputs(formPerorangan, true);
         toggleInputs(formBadanUsaha, false);
+
+        resetFormPerorangan();
         inputPerorangan.focus();
     })();
 });
