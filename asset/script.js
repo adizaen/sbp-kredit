@@ -405,81 +405,125 @@ document.addEventListener('DOMContentLoaded', function() {
      * agar sesuai dengan format yang diharapkan oleh 'tableConfigs'.
      */
     function renderResults(data) {
-        // --- AWAL BLOK TRANSFORMASI DATA ---
-        const rawData = Array.isArray(data) ? data[0] : data;
-        if (!rawData) {
-            showError("Tidak ada data yang diterima untuk ditampilkan.");
-            return;
-        }
+    // --- AWAL BLOK TRANSFORMASI DATA ---
+    const rawData = Array.isArray(data) ? data[0] : data;
+    if (!rawData) {
+        showError("Tidak ada data yang diterima untuk ditampilkan.");
+        return;
+    }
 
-        // 'obj' adalah objek baru yang akan kita buat agar strukturnya cocok dengan tableConfigs
-        const obj = {};
+    // 'obj' adalah objek baru yang akan kita buat agar strukturnya cocok dengan tableConfigs
+    const obj = {};
+    
+    // Ambil nama subjek dari form input untuk ditampilkan di ringkasan
+    const subjectName = btnPerorangan.classList.contains('active')
+        ? document.getElementById('namaPerorangan').value.trim()
+        : (document.querySelector('input[name="namaPemilik[]"]')?.value.trim() || document.getElementById('namaUsaha').value.trim());
+
+    // Fungsi bantuan untuk menormalisasi status (Tidak perlu diubah)
+    function normalizeStatus(status) {
+        if (!status) return "tidak ditemukan";
+        const normalized = status.toString().toLowerCase().trim();
+        return normalized.includes("ditemukan") && !normalized.includes("tidak") ? "ditemukan" : "tidak ditemukan";
+    }
+    
+    const formatHukumDetail = (hukumData) => {
+        if (!hukumData || !hukumData.keterlibatan_hukum || normalizeStatus(hukumData.keterlibatan_hukum) === 'tidak ditemukan') return '-';
         
-        // Ambil nama subjek dari form input untuk ditampilkan di ringkasan
-        const subjectName = btnPerorangan.classList.contains('active')
-            ? document.getElementById('namaPerorangan').value.trim()
-            : (document.querySelector('input[name="namaPemilik[]"]')?.value.trim() || document.getElementById('namaUsaha').value.trim());
+        let detailHtml = `<p>${hukumData.alasan_keterlibatan_hukum || 'Tidak ada ringkasan.'}</p>`;
+        if (hukumData.peran_tercatat && hukumData.peran_tercatat.length > 0) {
+            hukumData.peran_tercatat.forEach(item => {
+                const links = item.tautan_sumber ? item.tautan_sumber.map(linkUrl => {
+                    const sourceInfo = hukumData.daftar_sumber?.find(s => s.url === linkUrl);
+                    const publisherName = sourceInfo ? sourceInfo.sumber : (new URL(linkUrl)).hostname.replace('www.','');
+                    return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${publisherName}</a>`;
+                }).join('<br>') : 'Tidak ada';
+                
+                detailHtml += `
+                    <table class="detail-item-table key-value-table">
+                        <thead><tr><th>Properti</th><th>Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td>Peran</td><td>${item.peran || '-'}</td></tr>
+                            <tr><td>Ringkasan</td><td>${item.ringkasan || '-'}</td></tr>
+                            <tr><td>Lembaga</td><td>${item.lembaga || '-'}</td></tr>
+                            <tr><td>Tautan</td><td>${links}</td></tr>
+                        </tbody>
+                    </table>`;
+            });
+        }
+        return detailHtml;
+    };
 
-        // Fungsi bantuan untuk menormalisasi status (Tidak perlu diubah)
-        function normalizeStatus(status) {
-            if (!status) return "tidak ditemukan";
-            const normalized = status.toString().toLowerCase().trim();
-            return normalized.includes("ditemukan") && !normalized.includes("tidak") ? "ditemukan" : "tidak ditemukan";
+    const formatBeritaNegatifDetail = (beritaData) => {
+        if (!beritaData || !beritaData.pemberitaan_negatif || normalizeStatus(beritaData.pemberitaan_negatif) === 'tidak ditemukan') return '-';
+
+        let detailHtml = `<p>${beritaData.alasan_pemberitaan_negatif || 'Tidak ada ringkasan.'}</p>`;
+        if (beritaData.detail_pemberitaan && beritaData.detail_pemberitaan.length > 0) {
+            beritaData.detail_pemberitaan.forEach(item => {
+                const link = item.tautan ? `<a href="${item.tautan}" target="_blank" rel="noopener noreferrer">${item.sumber || 'Sumber'}</a>` : (item.sumber || '-');
+                detailHtml += `
+                    <table class="detail-item-table key-value-table">
+                        <thead><tr><th>Properti</th><th>Detail</th></tr></thead>
+                        <tbody>
+                            <tr><td>Kategori</td><td>${item.kategori || '-'}</td></tr>
+                            <tr><td>Deskripsi</td><td>${item.deskripsi || '-'}</td></tr>
+                            <tr><td>Sumber</td><td>${link}</td></tr>
+                        </tbody>
+                    </table>`;
+            });
+        }
+        return detailHtml;
+    };
+
+    // Helper function untuk format detail KTP
+    // Format detail KTP analysis
+    const ktpData = rawData.ktp_analysis;
+    let ktpAnalysisDetail = '-';
+
+    if (ktpData && (ktpData.status_keaslian || ktpData.alasan_validasi || ktpData.analisa_kualitas_dokumen)) {
+        ktpAnalysisDetail = '<div class="ktp-analysis-detail">';
+        
+        // Analisa Kualitas Dokumen dengan detail lengkap
+        if (ktpData.analisa_kualitas_dokumen) {
+            ktpAnalysisDetail += `<p><strong>Analisa Kualitas:</strong> ${ktpData.analisa_kualitas_dokumen}</p>`;
         }
         
-        const formatHukumDetail = (hukumData) => {
-            if (!hukumData || !hukumData.keterlibatan_hukum || normalizeStatus(hukumData.keterlibatan_hukum) === 'tidak ditemukan') return '-';
-            
-            let detailHtml = `<p>${hukumData.alasan_keterlibatan_hukum || 'Tidak ada ringkasan.'}</p>`;
-            if (hukumData.peran_tercatat && hukumData.peran_tercatat.length > 0) {
-                hukumData.peran_tercatat.forEach(item => {
-                    const links = item.tautan_sumber ? item.tautan_sumber.map(linkUrl => {
-                        const sourceInfo = hukumData.daftar_sumber?.find(s => s.url === linkUrl);
-                        const publisherName = sourceInfo ? sourceInfo.sumber : (new URL(linkUrl)).hostname.replace('www.','');
-                        return `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${publisherName}</a>`;
-                    }).join('<br>') : 'Tidak ada';
-                    
-                    detailHtml += `
-                        <table class="detail-item-table key-value-table">
-                            <thead><tr><th>Properti</th><th>Detail</th></tr></thead>
-                            <tbody>
-                                <tr><td>Peran</td><td>${item.peran || '-'}</td></tr>
-                                <tr><td>Ringkasan</td><td>${item.ringkasan || '-'}</td></tr>
-                                <tr><td>Lembaga</td><td>${item.lembaga || '-'}</td></tr>
-                                <tr><td>Tautan</td><td>${links}</td></tr>
-                            </tbody>
-                        </table>`;
-                });
-            }
-            return detailHtml;
-        };
-
-        const formatBeritaNegatifDetail = (beritaData) => {
-            if (!beritaData || !beritaData.pemberitaan_negatif || normalizeStatus(beritaData.pemberitaan_negatif) === 'tidak ditemukan') return '-';
-
-            let detailHtml = `<p>${beritaData.alasan_pemberitaan_negatif || 'Tidak ada ringkasan.'}</p>`;
-            if (beritaData.detail_pemberitaan && beritaData.detail_pemberitaan.length > 0) {
-                beritaData.detail_pemberitaan.forEach(item => {
-                    const link = item.tautan ? `<a href="${item.tautan}" target="_blank" rel="noopener noreferrer">${item.sumber || 'Sumber'}</a>` : (item.sumber || '-');
-                    detailHtml += `
-                        <table class="detail-item-table key-value-table">
-                            <thead><tr><th>Properti</th><th>Detail</th></tr></thead>
-                            <tbody>
-                                <tr><td>Kategori</td><td>${item.kategori || '-'}</td></tr>
-                                <tr><td>Deskripsi</td><td>${item.deskripsi || '-'}</td></tr>
-                                <tr><td>Sumber</td><td>${link}</td></tr>
-                            </tbody>
-                        </table>`;
-                });
-            }
-            return detailHtml;
-        };
+        // Tabel Data KTP Lengkap
+        ktpAnalysisDetail += `
+            <table class="detail-item-table key-value-table">
+                <thead><tr><th colspan="2">Data Teridentifikasi dari KTP</th></tr></thead>
+                <tbody>
+                    <tr><td>NIK</td><td>${ktpData.nik || '-'}</td></tr>
+                    <tr><td>Nama</td><td>${ktpData.nama || '-'}</td></tr>
+                    <tr><td>Tempat Lahir</td><td>${ktpData.tempat_lahir || '-'}</td></tr>
+                    <tr><td>Tanggal Lahir</td><td>${ktpData.tanggal_lahir || '-'}</td></tr>
+                    <tr><td>Jenis Kelamin</td><td>${ktpData.jenis_kelamin || '-'}</td></tr>
+                    <tr><td>Golongan Darah</td><td>${ktpData.golongan_darah || '-'}</td></tr>
+                    <tr><td>Alamat</td><td>${ktpData.alamat || '-'}</td></tr>
+                    <tr><td>RT/RW</td><td>${ktpData.rt_rw || '-'}</td></tr>
+                    <tr><td>Kel/Desa</td><td>${ktpData.kel_desa || '-'}</td></tr>
+                    <tr><td>Kecamatan</td><td>${ktpData.kecamatan || '-'}</td></tr>
+                    <tr><td>Kabupaten/Kota</td><td>${ktpData.kabupaten_kota || '-'}</td></tr>
+                    <tr><td>Provinsi</td><td>${ktpData.provinsi || '-'}</td></tr>
+                    <tr><td>Agama</td><td>${ktpData.agama || '-'}</td></tr>
+                    <tr><td>Status Perkawinan</td><td>${ktpData.status_perkawinan || '-'}</td></tr>
+                    <tr><td>Pekerjaan</td><td>${ktpData.pekerjaan || '-'}</td></tr>
+                    <tr><td>Kewarganegaraan</td><td>${ktpData.kewarganegaraan || '-'}</td></tr>
+                    <tr><td>Berlaku Hingga</td><td>${ktpData.berlaku_hingga || '-'}</td></tr>
+                    <tr><td>Tanda Tangan</td><td>${ktpData.tanda_tangan || '-'}</td></tr>
+                    <tr><td>Foto</td><td>${ktpData.foto || '-'}</td></tr>
+                </tbody>
+            </table>
+        `;
+        
+        ktpAnalysisDetail += '</div>';
+    }
 
         // 1. Memetakan data untuk bagian 'Ringkasan' dan 'Analisis Risiko'
         obj.nama_lengkap = subjectName;
         obj.tanggal_screening = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         
-        // [PERUBAHAN] Menggunakan simbol untuk status cepat
+        // Menggunakan simbol untuk status cepat
         obj.matriks_keputusan_cepat = {
             pep: normalizeStatus(rawData.pep_status?.pep_status) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan',
             hukum: normalizeStatus(rawData.keterlibatan_hukum?.keterlibatan_hukum) === 'ditemukan' ? '✅ Ditemukan' : '❌ Tidak Ditemukan',
@@ -503,6 +547,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // 4. Memetakan data untuk bagian 'Detail Pemberitaan Negatif'
         obj.pemberitaan_negatif_status = rawData.berita_negatif?.pemberitaan_negatif;
         obj.pemberitaan_negatif_detail = formatBeritaNegatifDetail(rawData.berita_negatif);
+        
+        // 5. Memetakan data untuk bagian 'Detail Screening KTP' - SESUAI DENGAN tableConfigs
+        obj.status_keaslian_ktp = rawData.ktp_analysis?.status_keaslian || '-';
+        obj.alasan_validasi_ktp = rawData.ktp_analysis?.alasan_validasi || '-';
+        obj.analisa_kualitas_dokumen_ktp = ktpAnalysisDetail;
         // --- AKHIR BLOK TRANSFORMASI DATA ---
 
 
@@ -547,10 +596,10 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             {
                 title: 'Detail Screening KTP',
-                statusPath: 'pemberitaan_negatif_status',
+                statusPath: 'status_keaslian_ktp',
                 fields: {
                     'status_keaslian_ktp': 'Status Keaslian',
-                    'alasan_validasi_ktp': 'Ringkasan/Detail Berita',
+                    'alasan_validasi_ktp': 'Alasan Validasi',
                     'analisa_kualitas_dokumen_ktp': 'analisis kualitas (resolusi, warna, OCR, dll)'
                 }
             },
